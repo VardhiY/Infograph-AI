@@ -1077,16 +1077,101 @@ with lcol:
     if st.session_state.generated:
         st.markdown('<div class="ig-card">', unsafe_allow_html=True)
         st.markdown('<div class="ig-sec-label">Export</div>', unsafe_allow_html=True)
-        st.download_button("⬇  Download HTML File",
+
+        # HTML download
+        st.download_button("⬇  Download HTML",
                            data=st.session_state.html_out.encode(),
                            file_name="infographic.html", mime="text/html")
+
         st.markdown("""
-<div class="export-hint">
-  <strong>Save as PNG/PDF:</strong><br>
-  Open in Chrome → Ctrl+P<br>
-  → Save as PDF or screenshot
+<div class="export-hint" style="margin-top:0.65rem;">
+  <strong>📸 Download as PNG:</strong><br>
+  Click the floating <span style="background:#1b5e20;color:#fff;padding:1px 8px;border-radius:5px;font-size:0.78rem;font-weight:700;">⬇ Save as PNG</span>
+  button inside the preview below — downloads a full high-res image automatically.
+  <br><br>
+  <strong>📄 Save as PDF:</strong><br>
+  Open downloaded HTML in Chrome → Ctrl+P → Save as PDF
 </div>""", unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
+
+
+# ══════════════════════════════════════════════════════════
+# IMAGE EXPORT INJECTOR
+# Injects html2canvas + a floating PNG download button into
+# the infographic HTML so it works entirely inside the iframe.
+# ══════════════════════════════════════════════════════════
+def inject_image_export(html: str) -> str:
+    snippet = """
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+#_ig_btn {
+  position:fixed; bottom:20px; right:20px; z-index:99999;
+  background:linear-gradient(135deg,#2e7d32,#1b5e20);
+  color:#fff; border:none; border-radius:12px;
+  padding:11px 22px;
+  font-family:'Sora','Plus Jakarta Sans','Inter',sans-serif;
+  font-size:0.9rem; font-weight:800; cursor:pointer;
+  box-shadow:0 4px 20px rgba(46,125,50,0.55);
+  display:flex; align-items:center; gap:8px;
+  transition:all 0.18s; letter-spacing:0.01em;
+  border-bottom:3px solid #145214;
+}
+#_ig_btn:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(46,125,50,0.65);}
+#_ig_btn:active{transform:translateY(1px);border-bottom-width:1px;}
+#_ig_overlay{
+  display:none; position:fixed; inset:0;
+  background:rgba(0,0,0,0.6); z-index:99998;
+  align-items:center; justify-content:center; flex-direction:column; gap:16px;
+}
+#_ig_overlay.on{display:flex;}
+#_ig_spin{
+  width:52px; height:52px;
+  border:5px solid rgba(255,255,255,0.15);
+  border-top:5px solid #69f0ae;
+  border-radius:50%; animation:_sp 0.7s linear infinite;
+}
+#_ig_lbl{color:#fff;font-family:'Inter',sans-serif;font-size:0.95rem;font-weight:600;}
+@keyframes _sp{to{transform:rotate(360deg);}}
+</style>
+<div id="_ig_overlay"><div id="_ig_spin"></div><div id="_ig_lbl">Capturing image…</div></div>
+<button id="_ig_btn" onclick="_igSave()">⬇ Save as PNG</button>
+<script>
+function _igSave(){
+  var btn=document.getElementById('_ig_btn');
+  var ov=document.getElementById('_ig_overlay');
+  btn.style.display='none';
+  ov.classList.add('on');
+  requestAnimationFrame(function(){
+    setTimeout(function(){
+      html2canvas(document.body,{
+        scale:2, useCORS:true, allowTaint:true,
+        backgroundColor:null, logging:false,
+        scrollX:0, scrollY:0,
+        windowWidth:document.documentElement.scrollWidth,
+        windowHeight:document.documentElement.scrollHeight,
+        width:document.documentElement.scrollWidth,
+        height:document.documentElement.scrollHeight
+      }).then(function(canvas){
+        var a=document.createElement('a');
+        a.download='infographic.png';
+        a.href=canvas.toDataURL('image/png',1.0);
+        a.click();
+        ov.classList.remove('on');
+        btn.style.display='flex';
+        btn.innerHTML='✅ Saved!';
+        setTimeout(function(){btn.innerHTML='⬇ Save as PNG';},2800);
+      }).catch(function(e){
+        ov.classList.remove('on');
+        btn.style.display='flex';
+        alert('Export error: '+e.message);
+      });
+    },80);
+  });
+}
+</script>"""
+    if '</body>' in html:
+        return html.replace('</body>', snippet + '\n</body>', 1)
+    return html + snippet
 
 
 # ══════════════════════════════════════════════════════════
@@ -1122,7 +1207,7 @@ with rcol:
   </div>
 </div>""", unsafe_allow_html=True)
     else:
-        components.html(st.session_state.html_out, height=1400, scrolling=True)
+        components.html(inject_image_export(st.session_state.html_out), height=1400, scrolling=True)
 
     st.markdown('</div>', unsafe_allow_html=True)
 

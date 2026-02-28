@@ -467,63 +467,258 @@ Now replace ALL CAPS placeholders with real content from the document below.
     elif itype == "timeline":
         return f"""Build a TIMELINE infographic. Title: {T}.
 
-EXACT HTML STRUCTURE TO BUILD:
-<!DOCTYPE html><html><head><meta charset="UTF-8"><title>...</title><style>
-{shared_css}
-.hero{{background:linear-gradient(135deg,{P},{S});padding:44px;text-align:center;border-radius:20px;margin-bottom:40px}}
-.hero h1{{font-size:2.5rem;font-weight:800;color:#fff;margin-bottom:8px}}
-.hero p{{color:rgba(255,255,255,0.8);font-size:1rem}}
-/* TIMELINE */
-.timeline{{position:relative;padding:20px 0}}
-.timeline::before{{content:'';position:absolute;left:50%;top:0;bottom:0;width:3px;background:linear-gradient(to bottom,{P},{S});transform:translateX(-50%)}}
-.tl-item{{display:flex;justify-content:flex-end;padding-right:calc(50% + 36px);margin-bottom:40px;position:relative}}
-.tl-item:nth-child(even){{justify-content:flex-start;padding-right:0;padding-left:calc(50% + 36px)}}
-.tl-dot{{position:absolute;left:50%;top:20px;width:18px;height:18px;background:{P};border:3px solid {BG};border-radius:50%;transform:translateX(-50%);box-shadow:0 0 0 4px {P}33;z-index:2}}
-.tl-card{{background:{CB};border-radius:14px;padding:20px 22px;width:330px;box-shadow:0 4px 20px rgba(0,0,0,0.18);border-left:4px solid {P}}}
-.tl-item:nth-child(even) .tl-card{{border-left:none;border-right:4px solid {S}}}
-.tl-date{{display:inline-block;background:{P};color:#fff;font-size:0.72rem;font-weight:700;padding:3px 12px;border-radius:100px;margin-bottom:8px;letter-spacing:0.08em}}
-.tl-item:nth-child(even) .tl-date{{background:{S}}}
-.tl-title{{font-family:'Sora',sans-serif;font-size:1rem;font-weight:700;color:{TX};margin-bottom:6px}}
-.tl-body{{font-size:0.85rem;color:{ST};line-height:1.6}}
-/* SUMMARY BAR */
-.span-bar{{background:{CB};border-radius:14px;padding:24px 28px;margin-top:40px}}
-.span-label{{font-size:0.72rem;color:{ST};text-transform:uppercase;letter-spacing:0.1em;margin-bottom:12px}}
-.span-track{{position:relative;height:8px;background:rgba(255,255,255,0.1);border-radius:100px;overflow:hidden}}
-.span-fill{{height:100%;background:linear-gradient(90deg,{P},{S});border-radius:100px}}
-.span-marks{{display:flex;justify-content:space-between;margin-top:8px}}
-.span-mark{{font-size:0.72rem;color:{ST}}}
-</style></head>
-<body><div class="wrap">
+IMPORTANT RENDERING RULES — follow exactly or the output will be blank:
+- Use ONLY solid background colors for cards, NEVER rgba() with low opacity
+- NEVER use position:absolute for the spine — use left border on a container div instead
+- Every card MUST have a visible background color like "{P}18" minimum or a real hex color
+- All text must have explicit color set
 
-<div class="hero fade"><h1>TITLE</h1><p>SUBTITLE — span of time covered</p></div>
+EXACT HTML TO BUILD (copy this structure, fill in real content):
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Timeline</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@700;800&family=Inter:wght@400;500;600&display=swap');
+*,*::before,*::after{{box-sizing:border-box;margin:0;padding:0}}
+body{{background:{BG};font-family:'Inter',sans-serif;padding:0;margin:0}}
+.wrap{{width:820px;margin:0 auto;padding:50px 44px 60px}}
 
-<div class="timeline">
-  <!-- Repeat for each event/milestone (minimum 6): -->
-  <div class="tl-item fade" style="animation-delay:0.1s">
-    <div class="tl-dot"></div>
-    <div class="tl-card">
-      <span class="tl-date">YEAR / DATE</span>
-      <div class="tl-title">Event Title</div>
-      <div class="tl-body">Description of what happened, from the document.</div>
-    </div>
-  </div>
-  <!-- ...more timeline items... -->
+/* ── HERO ── */
+.hero{{
+  background:linear-gradient(135deg,{P},{S});
+  border-radius:20px;padding:48px 44px;
+  margin-bottom:44px;text-align:center;
+}}
+.hero h1{{
+  font-family:'Sora',sans-serif;font-size:2.6rem;
+  font-weight:800;color:#ffffff;margin-bottom:10px;line-height:1.2;
+}}
+.hero p{{color:rgba(255,255,255,0.85);font-size:1rem;line-height:1.6}}
+.hero-meta{{
+  display:inline-flex;align-items:center;gap:10px;
+  margin-top:18px;background:rgba(0,0,0,0.2);
+  border-radius:100px;padding:6px 20px;
+  font-size:0.8rem;color:rgba(255,255,255,0.9);font-weight:600;
+}}
+
+/* ── TIMELINE CONTAINER ── */
+/* Left-spine design: reliable, always renders correctly */
+.tl-container{{
+  border-left:4px solid {P};
+  margin-left:24px;
+  padding-left:0;
+}}
+
+/* ── EACH TIMELINE ITEM ── */
+.tl-item{{
+  display:flex;
+  gap:0;
+  margin-bottom:8px;
+  align-items:flex-start;
+}}
+
+/* Date column — fixed width left side */
+.tl-left{{
+  flex-shrink:0;
+  width:140px;
+  padding:22px 20px 22px 0;
+  margin-left:-4px;
+  text-align:right;
+}}
+.tl-year{{
+  font-family:'Sora',sans-serif;
+  font-size:1.1rem;font-weight:800;
+  color:{P};display:block;line-height:1;
+}}
+.tl-month{{
+  font-size:0.72rem;font-weight:600;
+  color:{ST};text-transform:uppercase;
+  letter-spacing:0.1em;margin-top:3px;display:block;
+}}
+
+/* Dot connector */
+.tl-dot-wrap{{
+  flex-shrink:0;width:40px;
+  display:flex;flex-direction:column;
+  align-items:center;padding-top:26px;
+  margin-left:-4px;
+}}
+.tl-dot{{
+  width:16px;height:16px;border-radius:50%;
+  background:{P};flex-shrink:0;
+  box-shadow:0 0 0 4px {BG}, 0 0 0 7px {P}44;
+}}
+.tl-connector{{
+  width:2px;flex:1;
+  background:linear-gradient(to bottom,{P}88,transparent);
+  margin-top:6px;min-height:30px;
+}}
+
+/* Card */
+.tl-card{{
+  flex:1;
+  background:{P}18;
+  border:1px solid {P}44;
+  border-left:4px solid {P};
+  border-radius:14px;
+  padding:20px 24px;
+  margin-left:8px;
+  margin-bottom:16px;
+}}
+.tl-item:nth-child(3n+2) .tl-card{{
+  background:{S}18;border-color:{S}44;border-left-color:{S};
+}}
+.tl-item:nth-child(3n+2) .tl-dot{{background:{S};box-shadow:0 0 0 4px {BG},0 0 0 7px {S}44;}}
+.tl-item:nth-child(3n+2) .tl-year{{color:{S};}}
+.tl-item:nth-child(3n) .tl-card{{
+  background:{A}22;border-color:{A}55;border-left-color:{A};
+}}
+.tl-card-title{{
+  font-family:'Sora',sans-serif;font-size:1.05rem;
+  font-weight:700;color:{TX};margin-bottom:8px;line-height:1.3;
+}}
+.tl-card-body{{
+  font-size:0.88rem;color:{ST};line-height:1.65;
+}}
+.tl-tag{{
+  display:inline-block;margin-top:10px;
+  background:{P}28;color:{P};
+  border:1px solid {P}55;border-radius:100px;
+  padding:3px 12px;font-size:0.72rem;font-weight:700;
+  text-transform:uppercase;letter-spacing:0.08em;
+}}
+.tl-item:nth-child(3n+2) .tl-tag{{background:{S}28;color:{S};border-color:{S}55;}}
+
+/* ── SPAN BAR ── */
+.span-section{{
+  background:{P}18;border:1px solid {P}33;
+  border-radius:16px;padding:28px 32px;
+  margin-top:32px;
+}}
+.span-heading{{
+  font-family:'Sora',sans-serif;font-size:0.85rem;
+  font-weight:700;color:{TX};text-transform:uppercase;
+  letter-spacing:0.12em;margin-bottom:16px;
+}}
+.span-track{{
+  height:10px;background:{P}22;
+  border-radius:100px;overflow:hidden;border:1px solid {P}33;
+}}
+.span-fill{{
+  height:100%;
+  background:linear-gradient(90deg,{P},{S});
+  border-radius:100px;width:100%;
+}}
+.span-labels{{
+  display:flex;justify-content:space-between;
+  margin-top:10px;
+}}
+.span-lbl{{font-size:0.78rem;color:{ST};font-weight:500;}}
+
+/* ── STATS ROW ── */
+.stats-row{{
+  display:grid;grid-template-columns:repeat(3,1fr);
+  gap:16px;margin-top:24px;
+}}
+.stat-box{{
+  background:{P}18;border:1px solid {P}33;
+  border-radius:12px;padding:18px;text-align:center;
+}}
+.stat-box:nth-child(even){{background:{S}18;border-color:{S}33;}}
+.stat-num{{
+  font-family:'Sora',sans-serif;font-size:2rem;
+  font-weight:800;color:{P};line-height:1;
+}}
+.stat-box:nth-child(even) .stat-num{{color:{S};}}
+.stat-lbl{{font-size:0.78rem;color:{ST};margin-top:6px;}}
+
+/* ── FOOTER ── */
+footer{{
+  text-align:center;font-size:0.75rem;
+  color:{ST};margin-top:44px;padding-top:18px;
+  border-top:1px solid {P}22;
+}}
+
+@keyframes fadeUp{{from{{opacity:0;transform:translateY(20px)}}to{{opacity:1;transform:translateY(0)}}}}
+.fade{{opacity:0;animation:fadeUp 0.5s ease forwards;}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- HERO -->
+<div class="hero fade" style="animation-delay:0s">
+  <h1>INFOGRAPHIC TITLE FROM DOCUMENT</h1>
+  <p>Brief description of what this timeline covers</p>
+  <div class="hero-meta">📅 EARLIEST DATE – LATEST DATE</div>
 </div>
 
-<div class="span-bar fade">
-  <div class="span-label">Timeline Span</div>
-  <div class="span-track"><div class="span-fill" style="width:100%"></div></div>
-  <div class="span-marks">
-    <span class="span-mark">EARLIEST DATE</span>
-    <span class="span-mark">MID POINT</span>
-    <span class="span-mark">LATEST DATE</span>
+<!-- TIMELINE — build minimum 6 items from the document -->
+<div class="tl-container">
+
+  <div class="tl-item fade" style="animation-delay:0.1s">
+    <div class="tl-left">
+      <span class="tl-year">2020</span>
+      <span class="tl-month">Jan</span>
+    </div>
+    <div class="tl-dot-wrap">
+      <div class="tl-dot"></div>
+      <div class="tl-connector"></div>
+    </div>
+    <div class="tl-card">
+      <div class="tl-card-title">Event / Milestone Title Here</div>
+      <div class="tl-card-body">2–3 sentence description of this event extracted from the document. Include specific details, names, outcomes.</div>
+      <span class="tl-tag">Category or Phase</span>
+    </div>
+  </div>
+
+  <!-- REPEAT this tl-item block for every event in the document.
+       Use real dates, real event names, real descriptions.
+       Minimum 6 items, more if document has more events.
+       Each item auto-colors via nth-child rules. -->
+
+</div>
+
+<!-- TIMELINE SPAN BAR -->
+<div class="span-section fade" style="animation-delay:0.6s">
+  <div class="span-heading">⏱ Timeline Span</div>
+  <div class="span-track"><div class="span-fill"></div></div>
+  <div class="span-labels">
+    <span class="span-lbl">EARLIEST DATE</span>
+    <span class="span-lbl">MIDPOINT</span>
+    <span class="span-lbl">LATEST DATE</span>
+  </div>
+
+  <!-- KEY STATS from the document -->
+  <div class="stats-row" style="margin-top:24px">
+    <div class="stat-box">
+      <div class="stat-num">N</div>
+      <div class="stat-lbl">Total Events / Milestones</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-num">X yrs</div>
+      <div class="stat-lbl">Total Span Covered</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-num">KEY#</div>
+      <div class="stat-lbl">Key Metric from Document</div>
+    </div>
   </div>
 </div>
 
 <footer>Generated by InfographAI</footer>
-</div></body></html>
+</div>
+</body>
+</html>
 
-Replace ALL CAPS with real events, dates, and descriptions from the document below.
+CRITICAL INSTRUCTIONS:
+1. Extract EVERY date, event, milestone from the document — add a tl-item for each
+2. Replace ALL placeholder text (CAPS) with real content from the document  
+3. Keep the exact CSS — do NOT change card backgrounds to rgba(255,255,255,0.07) or any near-invisible color
+4. The tl-connector div MUST be present inside every tl-dot-wrap
+5. Do NOT use position:absolute anywhere in the timeline section
 {doc}"""
 
     # ── STATS ─────────────────────────────────────────────
@@ -951,7 +1146,7 @@ REQUIREMENTS:
 # ══════════════════════════════════════════════════════════
 # SESSION
 # ══════════════════════════════════════════════════════════
-for k, v in [("doc_text", ""), ("html_out", ""), ("generated", False)]:
+for k, v in [("doc_text", ""), ("html_out", ""), ("generated", False), ("show_fullscreen", False), ("trigger_png", False)]:
     if k not in st.session_state: st.session_state[k] = v
 
 
@@ -1102,201 +1297,57 @@ with lcol:
 # ══════════════════════════════════════════════════════════
 def inject_image_export(html: str) -> str:
     """
-    Injects into the generated infographic HTML:
-    - html2canvas for PNG capture (captures full document correctly)
-    - A floating toolbar with: Save as PNG | View Fullscreen | Close
-    PNG capture hides ALL fixed-position UI before taking the screenshot,
-    then captures document.documentElement so body background is included.
+    Injects ONLY the PNG capture script into the infographic HTML.
+    No toolbar inside iframe — buttons live in Streamlit UI instead.
+    Captures documentElement so background is included.
+    Hides nothing because there's nothing to hide.
     """
     snippet = """
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
-/* ── Floating toolbar ── */
-#_ig_toolbar {
-  position: fixed;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 99999;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: rgba(10,30,12,0.92);
-  backdrop-filter: blur(14px);
-  border: 1px solid rgba(105,240,174,0.22);
-  border-radius: 100px;
-  padding: 8px 14px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.55);
-}
-.ig-tbtn {
-  display: flex; align-items: center; gap: 6px;
-  background: none; border: none;
-  color: #e8f5e9; font-family: 'Sora','Inter',sans-serif;
-  font-size: 0.82rem; font-weight: 700;
-  padding: 7px 16px; border-radius: 100px;
-  cursor: pointer; transition: all 0.16s;
-  white-space: nowrap; letter-spacing: 0.01em;
-}
-.ig-tbtn:hover { background: rgba(105,240,174,0.14); color: #69f0ae; }
-.ig-tbtn.primary { background: #2e7d32; color: #fff; }
-.ig-tbtn.primary:hover { background: #1b5e20; }
-.ig-tbtn.busy { opacity: 0.45; cursor: wait; pointer-events: none; }
-.ig-sep { width: 1px; height: 22px; background: rgba(255,255,255,0.15); flex-shrink: 0; }
-
-/* ── Toast ── */
-#_ig_toast {
-  display: none;
-  position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
-  background: #1b5e20; color: #fff;
-  padding: 10px 26px; border-radius: 100px;
-  font-family: 'Inter',sans-serif; font-size: 0.88rem; font-weight: 700;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.4); z-index: 99999;
-  white-space: nowrap; animation: _tslide 0.25s ease;
-}
-@keyframes _tslide { from{opacity:0;transform:translateX(-50%) translateY(-12px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
-
-/* ── Fullscreen overlay ── */
-#_ig_fs {
-  display: none;
-  position: fixed; inset: 0; z-index: 999999;
-  background: #000;
-  overflow-y: auto;
-}
-#_ig_fs.open { display: block; }
-#_ig_fs_content {
-  transform-origin: top center;
-}
-#_ig_fs_close {
-  position: fixed; top: 16px; right: 18px; z-index: 9999999;
-  background: rgba(10,30,12,0.88); color: #e8f5e9;
-  border: 1px solid rgba(105,240,174,0.3); border-radius: 100px;
-  padding: 8px 18px; font-family: 'Sora','Inter',sans-serif;
-  font-size: 0.82rem; font-weight: 800; cursor: pointer;
-  backdrop-filter: blur(10px);
-  display: flex; align-items: center; gap: 6px;
-  transition: all 0.16s; box-shadow: 0 4px 16px rgba(0,0,0,0.4);
-}
-#_ig_fs_close:hover { background: #1b5e20; color: #fff; }
-
-/* Class added to ALL fixed elements during PNG capture */
-.ig-hide-for-capture { visibility: hidden !important; }
+  /* Ensure body fills full scrollable height for capture */
+  html, body { min-height: 100%; }
 </style>
-
-<div id="_ig_toast"></div>
-
-<!-- Fullscreen overlay — clones infographic content -->
-<div id="_ig_fs">
-  <button id="_ig_fs_close" onclick="_igCloseFS()">✕ Exit Fullscreen</button>
-  <div id="_ig_fs_content"></div>
-</div>
-
-<!-- Floating toolbar -->
-<div id="_ig_toolbar">
-  <button class="ig-tbtn primary" id="_ig_png_btn" onclick="_igSavePNG()">⬇ Save as PNG</button>
-  <div class="ig-sep"></div>
-  <button class="ig-tbtn" onclick="_igOpenFS()">⛶ Fullscreen</button>
-</div>
-
 <script>
-// ── Toast helper ──────────────────────────────────────────────────────────
-function _igToast(msg, ms) {
-  var t = document.getElementById('_ig_toast');
-  t.textContent = msg;
-  t.style.display = 'block';
-  setTimeout(function(){ t.style.display = 'none'; }, ms || 2800);
-}
-
-// ── PNG capture ───────────────────────────────────────────────────────────
-function _igSavePNG() {
-  var btn     = document.getElementById('_ig_png_btn');
-  var toolbar = document.getElementById('_ig_toolbar');
-  var toast   = document.getElementById('_ig_toast');
-
-  // Hide ALL fixed UI before capture
-  var fixedEls = [toolbar, toast];
-  fixedEls.forEach(function(el){ el.classList.add('ig-hide-for-capture'); });
-  btn.classList.add('busy');
-
-  // Double rAF: guarantees browser has repainted before html2canvas runs
-  requestAnimationFrame(function(){
-    requestAnimationFrame(function(){
-
-      // Capture documentElement so body background colour is included
-      var root = document.documentElement;
-      var bgColor = window.getComputedStyle(document.body).backgroundColor;
-
-      html2canvas(root, {
-        scale           : 2,
-        useCORS         : true,
-        allowTaint      : true,
-        backgroundColor : (bgColor && bgColor !== 'rgba(0, 0, 0, 0)') ? bgColor : '#071c12',
-        logging         : false,
-        scrollX         : -window.scrollX,
-        scrollY         : -window.scrollY,
-        windowWidth     : document.documentElement.scrollWidth,
-        windowHeight    : document.documentElement.scrollHeight,
-        x               : 0,
-        y               : 0,
-        width           : document.documentElement.scrollWidth,
-        height          : document.documentElement.scrollHeight
-      }).then(function(canvas){
-        var a = document.createElement('a');
-        a.download = 'infographic.png';
-        a.href = canvas.toDataURL('image/png', 1.0);
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-
-        // Restore UI
-        fixedEls.forEach(function(el){ el.classList.remove('ig-hide-for-capture'); });
-        btn.classList.remove('busy');
-        btn.textContent = '✅ Saved!';
-        _igToast('✅ PNG downloaded successfully!', 3000);
-        setTimeout(function(){ btn.innerHTML = '⬇ Save as PNG'; }, 3000);
-
-      }).catch(function(err){
-        fixedEls.forEach(function(el){ el.classList.remove('ig-hide-for-capture'); });
-        btn.classList.remove('busy');
-        _igToast('❌ Export failed: ' + err.message, 4000);
-      });
-    });
-  });
-}
-
-// ── Fullscreen ─────────────────────────────────────────────────────────────
-function _igOpenFS() {
-  var fs   = document.getElementById('_ig_fs');
-  var wrap = document.getElementById('_ig_fs_content');
-
-  // Clone the entire body content into fullscreen overlay
-  wrap.innerHTML = '';
-  var clone = document.body.cloneNode(true);
-  // Remove toolbar and fullscreen overlay from clone
-  ['_ig_toolbar','_ig_fs','_ig_toast'].forEach(function(id){
-    var el = clone.querySelector('#'+id);
-    if(el) el.remove();
-  });
-  wrap.appendChild(clone);
-
-  // Copy computed body background to fullscreen div
-  fs.style.background = window.getComputedStyle(document.body).backgroundColor || '#071c12';
-  fs.classList.add('open');
-  document.body.style.overflow = 'hidden';
-}
-
-function _igCloseFS() {
-  var fs = document.getElementById('_ig_fs');
-  fs.classList.remove('open');
-  fs.querySelector('#_ig_fs_content').innerHTML = '';
-  document.body.style.overflow = '';
-}
-
-// Escape key closes fullscreen
-document.addEventListener('keydown', function(e){
-  if(e.key === 'Escape') _igCloseFS();
+// Exposed globally so parent Streamlit component can call via postMessage
+window.addEventListener('message', function(e) {
+  if (e.data && e.data.action === 'ig_capture') {
+    _igCapture();
+  }
 });
-</script>"""
 
+function _igCapture() {
+  var bgColor = window.getComputedStyle(document.body).backgroundColor;
+  if (!bgColor || bgColor === 'rgba(0, 0, 0, 0)') bgColor = '#071c12';
+
+  html2canvas(document.documentElement, {
+    scale           : 2,
+    useCORS         : true,
+    allowTaint      : true,
+    backgroundColor : bgColor,
+    logging         : false,
+    scrollX         : 0,
+    scrollY         : 0,
+    x               : 0,
+    y               : 0,
+    width           : document.documentElement.scrollWidth,
+    height          : document.documentElement.scrollHeight,
+    windowWidth     : document.documentElement.scrollWidth,
+    windowHeight    : document.documentElement.scrollHeight
+  }).then(function(canvas) {
+    var a = document.createElement('a');
+    a.download = 'infographic.png';
+    a.href = canvas.toDataURL('image/png', 1.0);
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    // Notify parent
+    window.parent.postMessage({action: 'ig_saved'}, '*');
+  }).catch(function(err) {
+    window.parent.postMessage({action: 'ig_error', msg: err.message}, '*');
+  });
+}
+</script>"""
     if '</body>' in html:
         return html.replace('</body>', snippet + '\n</body>', 1)
     return html + snippet
@@ -1307,19 +1358,120 @@ document.addEventListener('keydown', function(e){
 # ══════════════════════════════════════════════════════════
 with rcol:
     ready = st.session_state.generated and st.session_state.html_out
-    badge = (
-        '<span class="cbadge-ready"><span class="cbadge-dot" style="background:#1b5e20;box-shadow:0 0 7px rgba(27,94,32,0.7);"></span>Infographic Ready</span>'
-        if ready else
-        '<span class="cbadge-wait"><span class="cbadge-dot" style="background:#fb8c00;box-shadow:0 0 7px rgba(251,140,0,0.7);"></span>Awaiting Input</span>'
-    )
-    st.markdown(f"""
+
+    if ready:
+        badge = '<span class="cbadge-ready"><span class="cbadge-dot" style="background:#1b5e20;box-shadow:0 0 7px rgba(27,94,32,0.7);"></span>Infographic Ready</span>'
+
+        # ── Action buttons row (Streamlit-native, always visible) ──
+        st.markdown(f"""
+<div class="canvas-header">
+  <div class="canvas-title">🖼 Output Canvas</div>
+  {badge}
+</div>""", unsafe_allow_html=True)
+
+        # Native Streamlit buttons so they render ABOVE the iframe
+        bcol1, bcol2, bcol3 = st.columns([1.1, 1.1, 1.8])
+
+        with bcol1:
+            # PNG download: inject capture script and trigger via JS
+            st.download_button(
+                "⬇ Download HTML",
+                data=st.session_state.html_out.encode(),
+                file_name="infographic.html",
+                mime="text/html",
+                key="dl_html2"
+            )
+
+        with bcol2:
+            if st.button("📸 Save PNG", key="png_btn"):
+                # We inject a tiny auto-trigger snippet so capture fires on load
+                st.session_state.trigger_png = True
+                st.rerun()
+
+        with bcol3:
+            # Fullscreen: inject opener script that creates a blob URL and opens new tab
+            import base64
+            fs_b64 = base64.b64encode(st.session_state.html_out.encode()).decode()
+            components.html(f"""
+<style>
+#_fs_openbtn {{
+  width:100%; padding:0.52rem 0.6rem;
+  background:#e8f5e9; border:2px solid #66bb6a;
+  border-bottom:3px solid #388e3c; color:#1b5e20;
+  font-family:'DM Sans',sans-serif; font-weight:700;
+  border-radius:10px; font-size:0.88rem; cursor:pointer;
+  transition:all 0.18s; display:block;
+}}
+#_fs_openbtn:hover{{background:#c8e6c9;border-color:#2e7d32;}}
+</style>
+<button id="_fs_openbtn" onclick="_openFS()">⛶ View Fullscreen</button>
+<script>
+function _openFS(){{
+  var b64 = "{fs_b64}";
+  var bin = atob(b64);
+  var bytes = new Uint8Array(bin.length);
+  for(var i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
+  var blob = new Blob([bytes],{{type:'text/html'}});
+  var url  = URL.createObjectURL(blob);
+  window.open(url,'_blank');
+  setTimeout(function(){{URL.revokeObjectURL(url);}},60000);
+}}
+</script>""", height=52)
+
+        # ── Main preview — scales infographic to fit column ──
+        st.markdown('<div class="canvas-body" style="overflow:hidden;border-radius:0 0 16px 16px;">', unsafe_allow_html=True)
+
+        html_to_render = inject_image_export(st.session_state.html_out)
+
+        trigger_png = st.session_state.get("trigger_png", False)
+        if trigger_png:
+            st.session_state.trigger_png = False
+            auto_trigger = '<script>window.addEventListener("load",function(){setTimeout(_igCapture,800);});</script>\n</body>'
+            html_to_render = html_to_render.replace('</body>', auto_trigger, 1)
+
+        # Scale the iframe so the 820px infographic fits perfectly in the column
+        # We wrap in a CSS zoom container
+        scale_wrap_open = """
+<style>
+.ig-zoom-wrap { width:100%; overflow:hidden; }
+.ig-zoom-inner {
+  width: 820px;
+  transform-origin: top left;
+  transform: scale(var(--ig-scale, 0.85));
+  height: calc(1400px * var(--ig-scale, 0.85));
+}
+</style>
+<div class="ig-zoom-wrap" id="igZoomWrap">
+<div class="ig-zoom-inner" id="igZoomInner">"""
+        scale_wrap_close = """</div></div>
+<script>
+(function(){
+  function doScale(){
+    var w = document.getElementById('igZoomWrap');
+    var inn = document.getElementById('igZoomInner');
+    if(!w||!inn) return;
+    var ratio = (w.offsetWidth / 820);
+    inn.style.transform = 'scale('+ratio+')';
+    inn.style.height = (1400 * ratio) + 'px';
+    w.style.height   = (1400 * ratio) + 'px';
+  }
+  doScale();
+  window.addEventListener('resize', doScale);
+  setTimeout(doScale, 300);
+})();
+</script>"""
+        st.markdown(scale_wrap_open, unsafe_allow_html=True)
+        components.html(html_to_render, height=1400, scrolling=True)
+        st.markdown(scale_wrap_close + '\n</div>', unsafe_allow_html=True)
+
+    else:
+        badge = '<span class="cbadge-wait"><span class="cbadge-dot" style="background:#fb8c00;box-shadow:0 0 7px rgba(251,140,0,0.7);"></span>Awaiting Input</span>'
+        st.markdown(f"""
 <div class="canvas-header">
   <div class="canvas-title">🖼 Output Canvas</div>
   {badge}
 </div>
 <div class="canvas-body">""", unsafe_allow_html=True)
-
-    if not ready:
         st.markdown("""
 <div class="empty-wrap">
   <div class="empty-grid"></div>
@@ -1334,10 +1486,7 @@ with rcol:
     </div>
   </div>
 </div>""", unsafe_allow_html=True)
-    else:
-        components.html(inject_image_export(st.session_state.html_out), height=1400, scrolling=True)
-
-    st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
 
 # ══════════════════════════════════════════════════════════

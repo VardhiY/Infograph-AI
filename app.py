@@ -1101,74 +1101,121 @@ with lcol:
 # the infographic HTML so it works entirely inside the iframe.
 # ══════════════════════════════════════════════════════════
 def inject_image_export(html: str) -> str:
+    """
+    Injects html2canvas into the infographic HTML.
+    Key fix: ALL UI (button + overlay) is hidden BEFORE capture starts,
+    then capture runs on the .ig-capture-root div (not body), 
+    so overlays/spinners never appear in the final PNG.
+    """
     snippet = """
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
+/* Wrap the entire infographic body content for clean capture */
+.ig-capture-root { position: relative; }
+
+/* Floating button — OUTSIDE capture root via fixed positioning */
 #_ig_btn {
-  position:fixed; bottom:20px; right:20px; z-index:99999;
-  background:linear-gradient(135deg,#2e7d32,#1b5e20);
-  color:#fff; border:none; border-radius:12px;
-  padding:11px 22px;
-  font-family:'Sora','Plus Jakarta Sans','Inter',sans-serif;
-  font-size:0.9rem; font-weight:800; cursor:pointer;
-  box-shadow:0 4px 20px rgba(46,125,50,0.55);
-  display:flex; align-items:center; gap:8px;
-  transition:all 0.18s; letter-spacing:0.01em;
-  border-bottom:3px solid #145214;
+  position: fixed; bottom: 22px; right: 22px; z-index: 99999;
+  background: linear-gradient(135deg, #2e7d32, #1b5e20);
+  color: #fff; border: none; border-radius: 12px;
+  padding: 12px 24px;
+  font-family: 'Sora', 'Inter', sans-serif;
+  font-size: 0.92rem; font-weight: 800; cursor: pointer;
+  box-shadow: 0 4px 20px rgba(46,125,50,0.55);
+  display: flex; align-items: center; gap: 8px;
+  transition: transform 0.15s, box-shadow 0.15s;
+  border-bottom: 3px solid #145214;
+  letter-spacing: 0.01em;
 }
-#_ig_btn:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(46,125,50,0.65);}
-#_ig_btn:active{transform:translateY(1px);border-bottom-width:1px;}
-#_ig_overlay{
-  display:none; position:fixed; inset:0;
-  background:rgba(0,0,0,0.6); z-index:99998;
-  align-items:center; justify-content:center; flex-direction:column; gap:16px;
+#_ig_btn:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(46,125,50,0.65); }
+#_ig_btn.busy { opacity: 0.5; cursor: wait; pointer-events: none; }
+
+/* Status bar — appears AFTER capture, never during */
+#_ig_status {
+  display: none;
+  position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%);
+  background: #1b5e20; color: #fff;
+  padding: 10px 24px; border-radius: 100px;
+  font-family: 'Inter', sans-serif; font-size: 0.88rem; font-weight: 600;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.35); z-index: 99999;
+  white-space: nowrap;
 }
-#_ig_overlay.on{display:flex;}
-#_ig_spin{
-  width:52px; height:52px;
-  border:5px solid rgba(255,255,255,0.15);
-  border-top:5px solid #69f0ae;
-  border-radius:50%; animation:_sp 0.7s linear infinite;
-}
-#_ig_lbl{color:#fff;font-family:'Inter',sans-serif;font-size:0.95rem;font-weight:600;}
-@keyframes _sp{to{transform:rotate(360deg);}}
 </style>
-<div id="_ig_overlay"><div id="_ig_spin"></div><div id="_ig_lbl">Capturing image…</div></div>
+
+<div id="_ig_status">✅ PNG downloaded!</div>
 <button id="_ig_btn" onclick="_igSave()">⬇ Save as PNG</button>
+
 <script>
-function _igSave(){
-  var btn=document.getElementById('_ig_btn');
-  var ov=document.getElementById('_ig_overlay');
-  btn.style.display='none';
-  ov.classList.add('on');
-  requestAnimationFrame(function(){
-    setTimeout(function(){
-      html2canvas(document.body,{
-        scale:2, useCORS:true, allowTaint:true,
-        backgroundColor:null, logging:false,
-        scrollX:0, scrollY:0,
-        windowWidth:document.documentElement.scrollWidth,
-        windowHeight:document.documentElement.scrollHeight,
-        width:document.documentElement.scrollWidth,
-        height:document.documentElement.scrollHeight
-      }).then(function(canvas){
-        var a=document.createElement('a');
-        a.download='infographic.png';
-        a.href=canvas.toDataURL('image/png',1.0);
+function _igSave() {
+  var btn    = document.getElementById('_ig_btn');
+  var status = document.getElementById('_ig_status');
+
+  // Step 1: Hide the button completely so it won't appear in screenshot
+  btn.style.visibility = 'hidden';
+  btn.classList.add('busy');
+
+  // Step 2: Let the browser repaint (button gone), THEN capture
+  requestAnimationFrame(function () {
+    requestAnimationFrame(function () {
+      // Find the best capture target: prefer .wrap / .wrapper div, fallback to body
+      var target = document.querySelector('.wrap') ||
+                   document.querySelector('.wrapper') ||
+                   document.querySelector('main') ||
+                   document.body;
+
+      // Measure full document height for scrollable content
+      var fullH = Math.max(
+        document.body.scrollHeight,
+        document.documentElement.scrollHeight
+      );
+      var fullW = Math.max(
+        document.body.scrollWidth,
+        document.documentElement.scrollWidth
+      );
+
+      html2canvas(target, {
+        scale        : 2,
+        useCORS      : true,
+        allowTaint   : true,
+        backgroundColor: window.getComputedStyle(document.body).backgroundColor || '#071c12',
+        logging      : false,
+        scrollX      : 0,
+        scrollY      : 0,
+        x            : 0,
+        y            : 0,
+        width        : target.scrollWidth,
+        height       : target.scrollHeight,
+        windowWidth  : fullW,
+        windowHeight : fullH
+      }).then(function (canvas) {
+        // Trigger download
+        var a = document.createElement('a');
+        a.download = 'infographic.png';
+        a.href = canvas.toDataURL('image/png', 1.0);
+        document.body.appendChild(a);
         a.click();
-        ov.classList.remove('on');
-        btn.style.display='flex';
-        btn.innerHTML='✅ Saved!';
-        setTimeout(function(){btn.innerHTML='⬇ Save as PNG';},2800);
-      }).catch(function(e){
-        ov.classList.remove('on');
-        btn.style.display='flex';
-        alert('Export error: '+e.message);
+        document.body.removeChild(a);
+
+        // Restore button + show success toast
+        btn.style.visibility = 'visible';
+        btn.classList.remove('busy');
+        btn.innerHTML = '✅ PNG Saved!';
+        status.style.display = 'block';
+        setTimeout(function () {
+          btn.innerHTML = '⬇ Save as PNG';
+          status.style.display = 'none';
+        }, 3000);
+
+      }).catch(function (err) {
+        btn.style.visibility = 'visible';
+        btn.classList.remove('busy');
+        alert('PNG export failed: ' + err.message);
       });
-    },80);
+    });
   });
 }
 </script>"""
+
     if '</body>' in html:
         return html.replace('</body>', snippet + '\n</body>', 1)
     return html + snippet

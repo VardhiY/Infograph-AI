@@ -1102,93 +1102,144 @@ with lcol:
 # ══════════════════════════════════════════════════════════
 def inject_image_export(html: str) -> str:
     """
-    Injects html2canvas into the infographic HTML.
-    Key fix: ALL UI (button + overlay) is hidden BEFORE capture starts,
-    then capture runs on the .ig-capture-root div (not body), 
-    so overlays/spinners never appear in the final PNG.
+    Injects into the generated infographic HTML:
+    - html2canvas for PNG capture (captures full document correctly)
+    - A floating toolbar with: Save as PNG | View Fullscreen | Close
+    PNG capture hides ALL fixed-position UI before taking the screenshot,
+    then captures document.documentElement so body background is included.
     """
     snippet = """
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
-/* Wrap the entire infographic body content for clean capture */
-.ig-capture-root { position: relative; }
-
-/* Floating button — OUTSIDE capture root via fixed positioning */
-#_ig_btn {
-  position: fixed; bottom: 22px; right: 22px; z-index: 99999;
-  background: linear-gradient(135deg, #2e7d32, #1b5e20);
-  color: #fff; border: none; border-radius: 12px;
-  padding: 12px 24px;
-  font-family: 'Sora', 'Inter', sans-serif;
-  font-size: 0.92rem; font-weight: 800; cursor: pointer;
-  box-shadow: 0 4px 20px rgba(46,125,50,0.55);
-  display: flex; align-items: center; gap: 8px;
-  transition: transform 0.15s, box-shadow 0.15s;
-  border-bottom: 3px solid #145214;
-  letter-spacing: 0.01em;
+/* ── Floating toolbar ── */
+#_ig_toolbar {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(10,30,12,0.92);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(105,240,174,0.22);
+  border-radius: 100px;
+  padding: 8px 14px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.55);
 }
-#_ig_btn:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(46,125,50,0.65); }
-#_ig_btn.busy { opacity: 0.5; cursor: wait; pointer-events: none; }
+.ig-tbtn {
+  display: flex; align-items: center; gap: 6px;
+  background: none; border: none;
+  color: #e8f5e9; font-family: 'Sora','Inter',sans-serif;
+  font-size: 0.82rem; font-weight: 700;
+  padding: 7px 16px; border-radius: 100px;
+  cursor: pointer; transition: all 0.16s;
+  white-space: nowrap; letter-spacing: 0.01em;
+}
+.ig-tbtn:hover { background: rgba(105,240,174,0.14); color: #69f0ae; }
+.ig-tbtn.primary { background: #2e7d32; color: #fff; }
+.ig-tbtn.primary:hover { background: #1b5e20; }
+.ig-tbtn.busy { opacity: 0.45; cursor: wait; pointer-events: none; }
+.ig-sep { width: 1px; height: 22px; background: rgba(255,255,255,0.15); flex-shrink: 0; }
 
-/* Status bar — appears AFTER capture, never during */
-#_ig_status {
+/* ── Toast ── */
+#_ig_toast {
   display: none;
-  position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%);
+  position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
   background: #1b5e20; color: #fff;
-  padding: 10px 24px; border-radius: 100px;
-  font-family: 'Inter', sans-serif; font-size: 0.88rem; font-weight: 600;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.35); z-index: 99999;
-  white-space: nowrap;
+  padding: 10px 26px; border-radius: 100px;
+  font-family: 'Inter',sans-serif; font-size: 0.88rem; font-weight: 700;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.4); z-index: 99999;
+  white-space: nowrap; animation: _tslide 0.25s ease;
 }
+@keyframes _tslide { from{opacity:0;transform:translateX(-50%) translateY(-12px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
+
+/* ── Fullscreen overlay ── */
+#_ig_fs {
+  display: none;
+  position: fixed; inset: 0; z-index: 999999;
+  background: #000;
+  overflow-y: auto;
+}
+#_ig_fs.open { display: block; }
+#_ig_fs_content {
+  transform-origin: top center;
+}
+#_ig_fs_close {
+  position: fixed; top: 16px; right: 18px; z-index: 9999999;
+  background: rgba(10,30,12,0.88); color: #e8f5e9;
+  border: 1px solid rgba(105,240,174,0.3); border-radius: 100px;
+  padding: 8px 18px; font-family: 'Sora','Inter',sans-serif;
+  font-size: 0.82rem; font-weight: 800; cursor: pointer;
+  backdrop-filter: blur(10px);
+  display: flex; align-items: center; gap: 6px;
+  transition: all 0.16s; box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+}
+#_ig_fs_close:hover { background: #1b5e20; color: #fff; }
+
+/* Class added to ALL fixed elements during PNG capture */
+.ig-hide-for-capture { visibility: hidden !important; }
 </style>
 
-<div id="_ig_status">✅ PNG downloaded!</div>
-<button id="_ig_btn" onclick="_igSave()">⬇ Save as PNG</button>
+<div id="_ig_toast"></div>
+
+<!-- Fullscreen overlay — clones infographic content -->
+<div id="_ig_fs">
+  <button id="_ig_fs_close" onclick="_igCloseFS()">✕ Exit Fullscreen</button>
+  <div id="_ig_fs_content"></div>
+</div>
+
+<!-- Floating toolbar -->
+<div id="_ig_toolbar">
+  <button class="ig-tbtn primary" id="_ig_png_btn" onclick="_igSavePNG()">⬇ Save as PNG</button>
+  <div class="ig-sep"></div>
+  <button class="ig-tbtn" onclick="_igOpenFS()">⛶ Fullscreen</button>
+</div>
 
 <script>
-function _igSave() {
-  var btn    = document.getElementById('_ig_btn');
-  var status = document.getElementById('_ig_status');
+// ── Toast helper ──────────────────────────────────────────────────────────
+function _igToast(msg, ms) {
+  var t = document.getElementById('_ig_toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  setTimeout(function(){ t.style.display = 'none'; }, ms || 2800);
+}
 
-  // Step 1: Hide the button completely so it won't appear in screenshot
-  btn.style.visibility = 'hidden';
+// ── PNG capture ───────────────────────────────────────────────────────────
+function _igSavePNG() {
+  var btn     = document.getElementById('_ig_png_btn');
+  var toolbar = document.getElementById('_ig_toolbar');
+  var toast   = document.getElementById('_ig_toast');
+
+  // Hide ALL fixed UI before capture
+  var fixedEls = [toolbar, toast];
+  fixedEls.forEach(function(el){ el.classList.add('ig-hide-for-capture'); });
   btn.classList.add('busy');
 
-  // Step 2: Let the browser repaint (button gone), THEN capture
-  requestAnimationFrame(function () {
-    requestAnimationFrame(function () {
-      // Find the best capture target: prefer .wrap / .wrapper div, fallback to body
-      var target = document.querySelector('.wrap') ||
-                   document.querySelector('.wrapper') ||
-                   document.querySelector('main') ||
-                   document.body;
+  // Double rAF: guarantees browser has repainted before html2canvas runs
+  requestAnimationFrame(function(){
+    requestAnimationFrame(function(){
 
-      // Measure full document height for scrollable content
-      var fullH = Math.max(
-        document.body.scrollHeight,
-        document.documentElement.scrollHeight
-      );
-      var fullW = Math.max(
-        document.body.scrollWidth,
-        document.documentElement.scrollWidth
-      );
+      // Capture documentElement so body background colour is included
+      var root = document.documentElement;
+      var bgColor = window.getComputedStyle(document.body).backgroundColor;
 
-      html2canvas(target, {
-        scale        : 2,
-        useCORS      : true,
-        allowTaint   : true,
-        backgroundColor: window.getComputedStyle(document.body).backgroundColor || '#071c12',
-        logging      : false,
-        scrollX      : 0,
-        scrollY      : 0,
-        x            : 0,
-        y            : 0,
-        width        : target.scrollWidth,
-        height       : target.scrollHeight,
-        windowWidth  : fullW,
-        windowHeight : fullH
-      }).then(function (canvas) {
-        // Trigger download
+      html2canvas(root, {
+        scale           : 2,
+        useCORS         : true,
+        allowTaint      : true,
+        backgroundColor : (bgColor && bgColor !== 'rgba(0, 0, 0, 0)') ? bgColor : '#071c12',
+        logging         : false,
+        scrollX         : -window.scrollX,
+        scrollY         : -window.scrollY,
+        windowWidth     : document.documentElement.scrollWidth,
+        windowHeight    : document.documentElement.scrollHeight,
+        x               : 0,
+        y               : 0,
+        width           : document.documentElement.scrollWidth,
+        height          : document.documentElement.scrollHeight
+      }).then(function(canvas){
         var a = document.createElement('a');
         a.download = 'infographic.png';
         a.href = canvas.toDataURL('image/png', 1.0);
@@ -1196,24 +1247,54 @@ function _igSave() {
         a.click();
         document.body.removeChild(a);
 
-        // Restore button + show success toast
-        btn.style.visibility = 'visible';
+        // Restore UI
+        fixedEls.forEach(function(el){ el.classList.remove('ig-hide-for-capture'); });
         btn.classList.remove('busy');
-        btn.innerHTML = '✅ PNG Saved!';
-        status.style.display = 'block';
-        setTimeout(function () {
-          btn.innerHTML = '⬇ Save as PNG';
-          status.style.display = 'none';
-        }, 3000);
+        btn.textContent = '✅ Saved!';
+        _igToast('✅ PNG downloaded successfully!', 3000);
+        setTimeout(function(){ btn.innerHTML = '⬇ Save as PNG'; }, 3000);
 
-      }).catch(function (err) {
-        btn.style.visibility = 'visible';
+      }).catch(function(err){
+        fixedEls.forEach(function(el){ el.classList.remove('ig-hide-for-capture'); });
         btn.classList.remove('busy');
-        alert('PNG export failed: ' + err.message);
+        _igToast('❌ Export failed: ' + err.message, 4000);
       });
     });
   });
 }
+
+// ── Fullscreen ─────────────────────────────────────────────────────────────
+function _igOpenFS() {
+  var fs   = document.getElementById('_ig_fs');
+  var wrap = document.getElementById('_ig_fs_content');
+
+  // Clone the entire body content into fullscreen overlay
+  wrap.innerHTML = '';
+  var clone = document.body.cloneNode(true);
+  // Remove toolbar and fullscreen overlay from clone
+  ['_ig_toolbar','_ig_fs','_ig_toast'].forEach(function(id){
+    var el = clone.querySelector('#'+id);
+    if(el) el.remove();
+  });
+  wrap.appendChild(clone);
+
+  // Copy computed body background to fullscreen div
+  fs.style.background = window.getComputedStyle(document.body).backgroundColor || '#071c12';
+  fs.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function _igCloseFS() {
+  var fs = document.getElementById('_ig_fs');
+  fs.classList.remove('open');
+  fs.querySelector('#_ig_fs_content').innerHTML = '';
+  document.body.style.overflow = '';
+}
+
+// Escape key closes fullscreen
+document.addEventListener('keydown', function(e){
+  if(e.key === 'Escape') _igCloseFS();
+});
 </script>"""
 
     if '</body>' in html:
